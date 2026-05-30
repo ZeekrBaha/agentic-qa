@@ -59,6 +59,13 @@ class LLMClient:
             )
         return parsed
 
+    async def embed(
+        self, texts: list[str], *, model: str = config.EMBEDDING_MODEL
+    ) -> list[list[float]]:
+        """Embed a batch of texts (used by the RAG-grounded judge)."""
+        resp = await self._client.embeddings.create(model=model, input=texts)
+        return [d.embedding for d in resp.data]
+
     @property
     def usage(self) -> dict[str, int]:
         return {

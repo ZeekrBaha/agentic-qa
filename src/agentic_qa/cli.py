@@ -32,8 +32,34 @@ def list_flows() -> None:
         typer.echo(f"{f.flow:18s} {f.goal}")
 
 
-async def _run(flow_specs: list[FlowSpec], headed: bool, base_url: str) -> Path:
+async def _build_judge_context(llm: LLMClient, flow_specs: list[FlowSpec], dsn: str):
+    """Build a sync flow->context lookup grounded in expected-behavior notes."""
+    from . import rag
+
+    store: object
+    try:
+        store = rag.PgVectorStore(dsn)
+        store.clear()
+        typer.echo(f"RAG: using pgvector at {dsn}")
+    except Exception as e:  # noqa: BLE001 - fall back to in-memory
+        typer.echo(f"RAG: pgvector unavailable ({e}); using in-memory store")
+        store = rag.InMemoryVectorStore()
+
+    await rag.index_expected_behavior(store, llm.embed)
+    contexts = await rag.grounded_contexts(flow_specs, store, llm.embed)
+    if hasattr(store, "close"):
+        store.close()
+    return lambda spec: contexts.get(spec.flow, "")
+
+
+async def _run(
+    flow_specs: list[FlowSpec], headed: bool, base_url: str,
+    use_rag: bool = False, rag_dsn: str = "",
+) -> Path:
     llm = LLMClient()  # fails fast if OPENAI_API_KEY is unset
+    judge_context = None
+    if use_rag:
+        judge_context = await _build_judge_context(llm, flow_specs, rag_dsn)
     run_dir = new_run_dir()
     async with async_playwright() as pw:
         browser = await pw.chromium.launch(headless=not headed)
@@ -43,7 +69,8 @@ async def _run(flow_specs: list[FlowSpec], headed: bool, base_url: str) -> Path:
         await ensure_logged_in(page)
 
         state = await run_qa(
-            page=page, llm=llm, flows=flow_specs, run_dir=run_dir, base_url=base_url
+            page=page, llm=llm, flows=flow_specs, run_dir=run_dir,
+            base_url=base_url, judge_context=judge_context,
         )
         await browser.close()
 
@@ -83,6 +110,11 @@ def run(
     ),
     headed: bool = typer.Option(False, "--headed", help="Show the browser window."),
     base_url: str = typer.Option(config.BASE_URL, "--base-url", help="Parabank base URL."),
+    rag: bool = typer.Option(False, "--rag", help="Ground the judge in expected-behavior notes."),
+    rag_dsn: str = typer.Option(
+        "postgresql://postgres:postgres@localhost:5433/agentic_qa",
+        "--rag-dsn", help="pgvector DSN (falls back to in-memory if unreachable).",
+    ),
 ) -> None:
     """Explore the selected flows and judge each one."""
     names = [n.strip() for n in flow_names.split(",")] if flow_names else None
@@ -90,7 +122,7 @@ def run(
         flow_specs = flows.select(names)
     except ValueError as e:
         raise typer.BadParameter(str(e)) from e
-    asyncio.run(_run(flow_specs, headed, base_url))
+    asyncio.run(_run(flow_specs, headed, base_url, use_rag=rag, rag_dsn=rag_dsn))
 
 
 @app.command("history")

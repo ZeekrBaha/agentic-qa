@@ -61,6 +61,20 @@ export OPENAI_API_KEY=sk-...
 # 4. Run QA
 agentic-qa list-flows
 agentic-qa run --flows transfer,billpay        # or just: agentic-qa run
+agentic-qa history                             # aggregate stats across runs
+```
+
+### RAG-grounded judge (optional)
+
+Ground each verdict in documented expected-behavior notes ("a transfer must
+reduce the source balance") instead of the model's prior. Backed by pgvector,
+with an automatic in-memory fallback if Postgres isn't reachable:
+
+```bash
+docker run -d --name aqa-pg -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=agentic_qa \
+  -p 5433:5432 pgvector/pgvector:pg16
+uv pip install -e ".[rag]"
+agentic-qa run --flows transfer --rag
 ```
 
 Each run writes to `runs/<timestamp>/`:
