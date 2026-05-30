@@ -93,38 +93,45 @@ def dashboard():
       <th>Balance</th></tr>{rows}</table>""")
 
 
+def transfer_form(error: str = ""):
+    opts = "".join(
+        f"<option value='{num}'>{num} — {a['name']}</option>"
+        for num, a in accounts.items()
+    )
+    err = f"<p id='error' style='color:#cf222e'>{error}</p>" if error else ""
+    return render("Transfer Funds", f"""
+      <nav><a href="/dashboard">Dashboard</a></nav>{err}
+      <form method="post" action="/transfer">
+        <label for="from_acct">From account</label>
+        <select id="from_acct" name="from_acct">{opts}</select>
+        <label for="to_acct">To account</label>
+        <select id="to_acct" name="to_acct">{opts}</select>
+        <label for="amount">Amount</label>
+        <input id="amount" name="amount" type="text">
+        <p><button id="submit" type="submit">Transfer</button></p>
+      </form>""")
+
+
 @app.route("/transfer", methods=["GET", "POST"])
 def transfer():
     if not require_login():
         return redirect(url_for("index"))
     if request.method == "GET":
-        opts = "".join(
-            f"<option value='{num}'>{num} — {a['name']}</option>"
-            for num, a in accounts.items()
-        )
-        return render("Transfer Funds", f"""
-          <nav><a href="/dashboard">Dashboard</a></nav>
-          <form method="post" action="/transfer">
-            <label for="from_acct">From account</label>
-            <select id="from_acct" name="from_acct">{opts}</select>
-            <label for="to_acct">To account</label>
-            <select id="to_acct" name="to_acct">{opts}</select>
-            <label for="amount">Amount</label>
-            <input id="amount" name="amount" type="text">
-            <p><button id="submit" type="submit">Transfer</button></p>
-          </form>""")
+        return transfer_form()
     return do_transfer()
 
 
 def do_transfer():
     src = request.form.get("from_acct", "")
     dst = request.form.get("to_acct", "")
+    # Re-render the form (not a dead-end) on validation errors so a tester
+    # can correct the input and retry.
     try:
         amount = round(float(request.form.get("amount", "0")), 2)
     except ValueError:
-        return render("Transfer Funds", "<p id='error'>Invalid amount.</p>")
+        return transfer_form("Invalid amount. Enter a number, e.g. 100.00")
     if src not in accounts or dst not in accounts:
-        return render("Transfer Funds", "<p id='error'>Unknown account.</p>")
+        return transfer_form("Unknown account.")
 
     prev_balance = accounts[src]["balance"]
     accounts[dst]["balance"] += amount

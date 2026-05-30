@@ -48,8 +48,10 @@ Rules:
 - To click or fill, use the EXACT `selector` string from the interactive
   elements list. Never invent selectors.
 - Fill required fields before clicking submit/continue buttons.
-- For a dropdown (role combobox / a <select>), use kind "select" with its
-  selector and put the option's visible label or value in "value".
+- For a dropdown (role combobox), use kind "select" with its selector and put
+  EXACTLY one of its listed option values (the quoted value before each label)
+  in "value". Do not invent option values.
+- Put only the plain value in "value" — no extra characters, brackets, or quotes.
 - If an action failed last turn (status tool_error), do not repeat it blindly:
   re-read the current page and try a different element or approach.
 - Call action.kind = "finish" when the goal is achieved OR you are confident it
@@ -69,7 +71,13 @@ def _page_state_for_prompt(state: dict[str, Any]) -> str:
     lines.append("Interactive elements:")
     for e in state.get("interactive", []):
         val = f" value={e['value']!r}" if e.get("value") else ""
-        lines.append(f"  - selector={e['selector']} role={e['role']} name={e['name']!r}{val}")
+        opts = ""
+        if e.get("options"):
+            shown = ", ".join(f"{o['value']!r}({o['label']})" for o in e["options"][:12])
+            opts = f" options=[{shown}]"
+        lines.append(
+            f"  - selector={e['selector']} role={e['role']} name={e['name']!r}{val}{opts}"
+        )
     text = state.get("text", "")
     if text:
         lines.append(f"Visible text (truncated): {text[:800]}")
@@ -86,11 +94,13 @@ def _history_for_prompt(steps: list[StepRecord], last_n: int = 6) -> str:
         desc = a.kind
         if a.selector:
             desc += f" {a.selector}"
-        if a.value and a.kind == "fill":
-            desc += f" = {a.value!r}"
+        if a.value and a.kind in ("fill", "select"):
+            # Bound the echoed value: a malformed/degenerate value must not feed
+            # back into the next prompt and amplify into runaway repetition.
+            desc += f" = {a.value[:40]!r}"
         if a.url:
             desc += f" {a.url}"
-        out.append(f"step {s.step}: {desc} -> [{s.status}] {s.result}")
+        out.append(f"step {s.step}: {desc} -> [{s.status}] {s.result[:120]}")
     return "\n".join(out)
 
 
@@ -108,7 +118,7 @@ async def _execute(page: Page, action: Action) -> str:
     if action.kind == "fill":
         if not action.selector:
             raise ToolError("fill", "no selector provided")
-        return await tools.fill(page, action.selector, action.value or "")
+        return await tools.fill(page, action.selector, tools.clean_value(action.value))
     if action.kind == "select":
         if not action.selector:
             raise ToolError("select", "no selector provided")

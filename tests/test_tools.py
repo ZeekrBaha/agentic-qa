@@ -47,25 +47,60 @@ async def test_fill_then_click_via_returned_selectors(page):
     assert await page.title() == "clicked!"
 
 
-async def test_select_option_by_label_and_value(page):
-    await page.set_content(
-        "<select id='acct'><option value='1001'>Checking</option>"
-        "<option value='1002'>Savings</option></select>"
-    )
+SELECT_HTML = (
+    "<label for='acct'>From account</label>"
+    "<select id='acct'><option value='1001'>1001 — Checking</option>"
+    "<option value='1002'>1002 — Savings</option></select>"
+)
+
+
+def test_clean_value_strips_trailing_json_junk():
+    assert tools.clean_value('1001}}}]}') == "1001"
+    assert tools.clean_value('100}}]} ') == "100"
+    assert tools.clean_value('1002 — Savings}}]}"}}]}') == "1002 — Savings"
+    assert tools.clean_value("Acme Utilities") == "Acme Utilities"  # untouched
+    assert tools.clean_value("100.00") == "100.00"
+    assert tools.clean_value(None) == ""
+
+
+async def test_get_page_state_exposes_select_options(page):
+    await page.set_content(SELECT_HTML)
     state = await tools.get_page_state(page)
-    sel = state["interactive"][0]["selector"]
-    await tools.select_option(page, sel, "Savings")  # by label
-    assert await page.locator(sel).input_value() == "1002"
-    await tools.select_option(page, sel, "1001")  # by value
-    assert await page.locator(sel).input_value() == "1001"
+    combo = next(e for e in state["interactive"] if e["role"] == "combobox")
+    # Name is the label, not the newline-joined option blob.
+    assert combo["name"] == "From account"
+    assert "\n" not in combo["name"]
+    assert combo["options"] == [
+        {"value": "1001", "label": "1001 — Checking"},
+        {"value": "1002", "label": "1002 — Savings"},
+    ]
 
 
-async def test_select_option_missing_raises_toolerror(page, monkeypatch):
-    monkeypatch.setattr(config.RUN, "action_timeout_ms", 800)
-    await page.set_content("<select id='acct'><option value='x'>X</option></select>")
+async def test_select_option_by_label_and_value(page):
+    await page.set_content(SELECT_HTML)
+    await tools.select_option(page, "#acct", "1002 — Savings")  # by label
+    assert await page.locator("#acct").input_value() == "1002"
+    await tools.select_option(page, "#acct", "1001")  # by value
+    assert await page.locator("#acct").input_value() == "1001"
+
+
+async def test_select_option_tolerates_noisy_value(page):
+    """gpt-4o-mini sometimes appends JSON junk to string values; we recover."""
+    await page.set_content(SELECT_HTML)
+    await tools.select_option(page, "#acct", '1002}}]}"}}]}')
+    assert await page.locator("#acct").input_value() == "1002"
+
+
+async def test_select_option_unknown_fails_fast(page, monkeypatch):
+    monkeypatch.setattr(config.RUN, "action_timeout_ms", 8000)
+    await page.set_content(SELECT_HTML)
+    import time
+    start = time.monotonic()
     with pytest.raises(ToolError) as exc:
-        await tools.select_option(page, "#acct", "nope")
+        await tools.select_option(page, "#acct", "9999 — Nonexistent")
     assert exc.value.action == "select"
+    # Must fail fast (no 8s Playwright wait), well under the action timeout.
+    assert time.monotonic() - start < 2.0
 
 
 async def test_navigate_returns_final_url(page):
@@ -86,6 +121,17 @@ async def test_click_missing_selector_raises_toolerror(page, monkeypatch):
     with pytest.raises(ToolError) as exc:
         await tools.click(page, '[data-aqa-ref="e999"]')
     assert exc.value.action == "click"
+
+
+async def test_fill_missing_selector_fails_fast(page, monkeypatch):
+    import time
+    monkeypatch.setattr(config.RUN, "action_timeout_ms", 8000)
+    await page.set_content("<body><p>no inputs</p></body>")
+    start = time.monotonic()
+    with pytest.raises(ToolError) as exc:
+        await tools.fill(page, '[data-aqa-ref="e3"]', "100")
+    assert exc.value.action == "fill"
+    assert time.monotonic() - start < 2.0  # not the full 8s wait
 
 
 async def test_console_errors_captured_after_instrument(page):

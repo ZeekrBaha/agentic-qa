@@ -48,9 +48,15 @@ Decide:
 - status: "pass" if the goal was genuinely achieved with no broken behavior;
   "fail" if something is broken or the goal was not achieved; "uncertain" if the
   evidence is insufficient to tell.
-- category: "functional" (wrong/blocked behavior), "visual" (layout/content
-  rendering wrong), "data_error" (incorrect values/balances/totals), or "crash"
-  (errors, stack traces, dead pages).
+- category: pick the MOST specific one:
+    * "crash" — errors, stack traces, HTTP 500, or a dead/blank page.
+    * "data_error" — the operation appears to complete but a value is wrong: a
+      balance, total, or amount that does not match what the operation should
+      have produced (e.g. a transfer that does NOT reduce the source balance).
+    * "visual" — layout or content renders incorrectly.
+    * "functional" — the action is blocked, errors out, or cannot be completed.
+  Prefer "data_error" over "functional" when the action completed but the
+  resulting number is incorrect.
 - severity: "low" / "medium" / "high" business impact.
 - reasoning: cite the specific evidence (a console error, a missing element, an
   unchanged balance, the final page text) that drives your verdict.

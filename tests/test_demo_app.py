@@ -39,6 +39,19 @@ def test_planted_bug_source_balance_not_debited():
     assert "$600.00" in dash   # Savings credited
 
 
+def test_invalid_amount_rerenders_form_not_deadend():
+    client = app.test_client()
+    client.post("/login", data={"username": "demo", "password": "demo"})
+    resp = client.post(
+        "/transfer", data={"from_acct": "1001", "to_acct": "1002", "amount": "abc"}
+    )
+    html = resp.get_data(as_text=True)
+    assert "Invalid amount" in html
+    # The form is still present so a tester (or the agent) can retry.
+    assert 'id="amount"' in html
+    assert 'id="submit"' in html
+
+
 @pytest.fixture
 def live_demo():
     server = make_server("127.0.0.1", 5099, app)

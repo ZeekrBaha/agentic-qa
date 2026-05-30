@@ -16,12 +16,26 @@ attribute and returned with a ready-to-use CSS selector
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from playwright.async_api import Error as PlaywrightError
 from playwright.async_api import Page
 
 from . import config
+
+# Strip a trailing cluster of JSON structural / quote / whitespace characters.
+# gpt-4o-mini occasionally appends junk like `}}]}` to a structured-output
+# string value; bank form values never legitimately end in these, so removing
+# the trailing run repairs the model artifact without touching real content.
+_TRAILING_JUNK = re.compile(r"[\s}\]{\"'`]+$")
+
+
+def clean_value(value: str | None) -> str:
+    """Repair trailing structured-output junk in a model-provided value."""
+    if not value:
+        return value or ""
+    return _TRAILING_JUNK.sub("", value)
 
 
 class ToolError(Exception):
@@ -97,6 +111,8 @@ async def navigate(page: Page, target_url: str) -> str:
 
 async def click(page: Page, selector: str) -> str:
     """Click the element matched by a CSS selector."""
+    if await page.locator(selector).count() == 0:
+        raise ToolError("click", f"selector {selector!r}: element not found")
     try:
         await page.locator(selector).first.click(
             timeout=config.RUN.action_timeout_ms
@@ -109,6 +125,8 @@ async def click(page: Page, selector: str) -> str:
 
 async def fill(page: Page, selector: str, value: str) -> str:
     """Type ``value`` into the field matched by a CSS selector."""
+    if await page.locator(selector).count() == 0:
+        raise ToolError("fill", f"selector {selector!r}: element not found")
     try:
         await page.locator(selector).first.fill(
             value, timeout=config.RUN.action_timeout_ms
@@ -118,18 +136,53 @@ async def fill(page: Page, selector: str, value: str) -> str:
         raise ToolError("fill", f"selector {selector!r}: {e}") from e
 
 
+def _match_option(requested: str, options: list[dict[str, str]]) -> str | None:
+    """Find the option value best matching a (possibly noisy) requested string."""
+    req = clean_value(requested).strip()
+    reqn = req.lower()
+    # 1) exact value or label (case-insensitive)
+    for o in options:
+        if reqn == o["value"].lower() or reqn == o["label"].strip().lower():
+            return o["value"]
+    # 2) the option's value appears in the request (e.g. "1001 — Checking" -> 1001)
+    for o in options:
+        if o["value"] and o["value"].lower() in reqn:
+            return o["value"]
+    # 3) the request is contained in an option's label (e.g. "Savings")
+    for o in options:
+        if reqn and reqn in o["label"].strip().lower():
+            return o["value"]
+    return None
+
+
 async def select_option(page: Page, selector: str, option: str) -> str:
-    """Choose an option in a <select> dropdown, by value or visible label."""
+    """Choose an option in a <select>, tolerating noisy values and failing fast.
+
+    Reads the element's real options up front so a non-matching request raises
+    immediately instead of waiting out Playwright's full action timeout.
+    """
+    if await page.locator(selector).count() == 0:
+        raise ToolError("select", f"selector {selector!r}: element not found")
     locator = page.locator(selector).first
     try:
-        await locator.select_option(value=option, timeout=config.RUN.action_timeout_ms)
-        return f"selected {option!r} in {selector}"
-    except PlaywrightError:
-        try:
-            await locator.select_option(label=option, timeout=config.RUN.action_timeout_ms)
-            return f"selected {option!r} in {selector}"
-        except PlaywrightError as e:
-            raise ToolError("select", f"selector {selector!r} option {option!r}: {e}") from e
+        options = await locator.evaluate(
+            "el => Array.from(el.options || [])"
+            ".map(o => ({value: o.value, label: (o.textContent || '').trim()}))"
+        )
+    except PlaywrightError as e:
+        raise ToolError("select", f"selector {selector!r} is not a <select>: {e}") from e
+    if not options:
+        raise ToolError("select", f"selector {selector!r}: no options available")
+
+    target = _match_option(option, options)
+    if target is None:
+        available = [o["value"] for o in options]
+        raise ToolError(
+            "select",
+            f"selector {selector!r}: no option matches {option!r}; available={available}",
+        )
+    await locator.select_option(value=target, timeout=config.RUN.action_timeout_ms)
+    return f"selected {target!r} in {selector}"
 
 
 async def screenshot(page: Page, path: str | None = None) -> str:
@@ -154,6 +207,14 @@ _PAGE_STATE_JS = r"""
   const accName = (el) => {
     const aria = el.getAttribute('aria-label');
     if (aria) return aria.trim();
+    if (el.tagName === 'SELECT') {
+      // Use the field's label, never the joined option text.
+      if (el.id) {
+        const lab = document.querySelector(`label[for="${el.id}"]`);
+        if (lab && lab.innerText.trim()) return lab.innerText.trim();
+      }
+      return (el.getAttribute('name') || '').trim();
+    }
     if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
       if (el.id) {
         const lab = document.querySelector(`label[for="${el.id}"]`);
@@ -192,8 +253,14 @@ _PAGE_STATE_JS = r"""
     if (i >= 80) break;
     const ref = 'e' + i;
     el.setAttribute('data-aqa-ref', ref);
-    const entry = { selector: `[data-aqa-ref="${ref}"]`, role: roleOf(el), name: accName(el) };
+    const name = (accName(el) || '').replace(/\s+/g, ' ').trim();
+    const entry = { selector: `[data-aqa-ref="${ref}"]`, role: roleOf(el), name };
     if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') entry.value = el.value || '';
+    if (el.tagName === 'SELECT') {
+      entry.options = Array.from(el.options).slice(0, 20).map(o => ({
+        value: o.value, label: (o.textContent || '').replace(/\s+/g, ' ').trim()
+      }));
+    }
     interactive.push(entry);
     i++;
   }

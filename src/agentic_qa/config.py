@@ -48,9 +48,12 @@ TEST_USER = TestUser()
 
 # --- Models ---------------------------------------------------------------
 
-# Model split for token economics: cheaper model drives the explorer,
-# stronger model runs the judge. Override via env if desired.
-EXPLORER_MODEL = os.environ.get("AGENTIC_QA_EXPLORER_MODEL", "gpt-4o-mini")
+# Model split. The judge always uses a strong model. The explorer default is
+# also gpt-4o: live validation showed gpt-4o-mini reliably FLAGS bugs but often
+# fails to COMPLETE multi-field flows (e.g. funds transfer), where gpt-4o
+# completes reliably. Set AGENTIC_QA_EXPLORER_MODEL=gpt-4o-mini to trade some
+# completion reliability for ~2-3x lower explorer token cost.
+EXPLORER_MODEL = os.environ.get("AGENTIC_QA_EXPLORER_MODEL", "gpt-4o")
 JUDGE_MODEL = os.environ.get("AGENTIC_QA_JUDGE_MODEL", "gpt-4o")
 EMBEDDING_MODEL = os.environ.get("AGENTIC_QA_EMBEDDING_MODEL", "text-embedding-3-small")
 
