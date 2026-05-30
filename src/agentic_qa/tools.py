@@ -199,6 +199,14 @@ async def get_page_state(page: Page) -> dict[str, Any]:
         raise ToolError("get_page_state", str(e)) from e
 
 
+def reset_capture(page: Page) -> None:
+    """Clear captured console/network events so the next flow starts clean."""
+    for attr in (_CONSOLE_ATTR, _NETWORK_ATTR):
+        captured = getattr(page, attr, None)
+        if captured is not None:
+            captured.clear()
+
+
 async def get_console_errors(page: Page) -> list[str]:
     """Console errors + uncaught exceptions captured since ``instrument``."""
     return list(getattr(page, _CONSOLE_ATTR, []))

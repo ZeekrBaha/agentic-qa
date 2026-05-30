@@ -16,6 +16,14 @@ from pydantic import BaseModel, Field
 ActionKind = Literal["navigate", "click", "fill", "finish"]
 
 
+class FlowSpec(BaseModel):
+    """A flow to test: a short name and the goal handed to the explorer."""
+
+    flow: str
+    goal: str
+    start_page: str = "overview.htm"
+
+
 class Action(BaseModel):
     """A single action the explorer wants to take."""
 
