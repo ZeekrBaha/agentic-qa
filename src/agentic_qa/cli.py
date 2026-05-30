@@ -16,7 +16,7 @@ import typer
 from playwright.async_api import async_playwright
 
 from . import config, flows, history, report, tools
-from .auth import ensure_logged_in
+from .auth import ensure_logged_in, ensure_min_accounts
 from .explorer import new_run_dir
 from .graph import run_qa
 from .llm import LLMClient
@@ -67,6 +67,7 @@ async def _run(
         page.set_default_timeout(config.RUN.action_timeout_ms)
         tools.instrument(page)
         await ensure_logged_in(page)
+        await ensure_min_accounts(page, minimum=2)  # transfer needs 2 accounts
 
         state = await run_qa(
             page=page, llm=llm, flows=flow_specs, run_dir=run_dir,

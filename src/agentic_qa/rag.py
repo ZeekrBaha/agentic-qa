@@ -72,6 +72,15 @@ class PgVectorStore:
         self.dim = dim
         self._conn = psycopg.connect(dsn, autocommit=True)
         self._conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
+        # If the table exists with a different embedding dimension (e.g. left by
+        # a test or a model change), recreate it rather than fail on insert.
+        existing = self._conn.execute(
+            "SELECT format_type(a.atttypid, a.atttypmod) "
+            "FROM pg_attribute a JOIN pg_class c ON a.attrelid = c.oid "
+            "WHERE c.relname = 'spec_docs' AND a.attname = 'embedding' AND a.attnum > 0"
+        ).fetchone()
+        if existing is not None and existing[0] != f"vector({dim})":
+            self._conn.execute("DROP TABLE IF EXISTS spec_docs")
         self._conn.execute(
             f"CREATE TABLE IF NOT EXISTS spec_docs ("
             f"  id SERIAL PRIMARY KEY,"

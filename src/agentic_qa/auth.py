@@ -64,6 +64,39 @@ async def register(page: Page, user: TestUser) -> bool:
     return await login(page, user)
 
 
+async def _account_count(page: Page) -> int:
+    await page.goto(config.url("overview.htm"))
+    await page.wait_for_load_state("networkidle")
+    rows = await page.locator("#accountTable tbody tr").count()
+    return max(0, rows - 1)  # the final row is the "Total" row
+
+
+async def ensure_min_accounts(page: Page, minimum: int = 2) -> int:
+    """Open accounts until the user has at least ``minimum`` (transfer needs 2).
+
+    A freshly-registered Parabank user has a single account, which makes the
+    funds-transfer flow impossible (source and destination would be identical).
+    This setup step removes that false-failure cause.
+    """
+    count = await _account_count(page)
+    attempts = 0
+    while count < minimum and attempts < minimum + 2:
+        attempts += 1
+        await page.goto(config.url("openaccount.htm"))
+        await page.wait_for_load_state("networkidle")
+        try:  # default to a SAVINGS account; funding account defaults to first
+            await page.locator("#type").select_option(value="1")
+        except Exception:  # noqa: BLE001 - selection is best-effort
+            pass
+        try:
+            await page.locator('input[value="Open New Account"]').click()
+            await page.wait_for_load_state("networkidle")
+        except Exception:  # noqa: BLE001
+            break
+        count = await _account_count(page)
+    return count
+
+
 async def ensure_logged_in(page: Page, user: TestUser | None = None) -> None:
     """Idempotently establish a logged-in session for the fixed test user."""
     user = user or config.TEST_USER

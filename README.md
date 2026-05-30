@@ -126,6 +126,19 @@ tests/             unit tests + recorded fixture bundles
 docs/superpowers/specs/   design doc
 ```
 
+## Validation
+
+Validated offline (30 unit tests) and live (real models vs Parabank + the
+planted-bug app). The judge discriminates correctly: a working Parabank transfer
+→ `pass`, the planted-bug transfer → `fail / data_error / high`. Live validation
+also found and fixed several real defects (dropdown handling, structured-output
+junk, a degeneration feedback loop, pgvector dimension mismatch, a transfer
+setup gap). Full write-up and known limitations: [`docs/VALIDATION.md`](docs/VALIDATION.md).
+
+> Model note: the default explorer is `gpt-4o` because validation showed
+> `gpt-4o-mini` reliably *flags* bugs but often can't *complete* multi-field
+> flows. Set `AGENTIC_QA_EXPLORER_MODEL=gpt-4o-mini` to trade reliability for cost.
+
 ## Build phases
 
 Built incrementally (see `docs/superpowers/specs/`): 0 skeleton → 1 tools →
