@@ -1,0 +1,36 @@
+[project]
+name = "agentic-qa"
+version = "0.1.0"
+description = "Agentic QA — an Explorer agent walks a web app via Playwright; a Judge agent scores each flow with a structured verdict."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "playwright>=1.49",
+    "pydantic>=2.9",
+    "openai>=1.55",
+    "langgraph>=0.2.50",
+    "typer>=0.15",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+]
+rag = [
+    "psycopg[binary]>=3.2",
+    "pgvector>=0.3",
+]
+
+[project.scripts]
+agentic-qa = "agentic_qa.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+markers = [
+    "slow: end-to-end tests that need a live Parabank + OPENAI_API_KEY",
+]
