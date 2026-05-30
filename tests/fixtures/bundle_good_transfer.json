@@ -1,0 +1,73 @@
+{
+  "flow": "transfer",
+  "goal": "Transfer $100 from account A to account B and confirm the transfer completed.",
+  "start_url": "http://localhost:8080/parabank/overview.htm",
+  "steps": [
+    {
+      "step": 1,
+      "reasoning": "open transfer page",
+      "action": {
+        "kind": "click",
+        "selector": "[data-aqa-ref=\"e3\"]",
+        "value": null,
+        "url": null
+      },
+      "result": "clicked [data-aqa-ref=\"e3\"]",
+      "status": "ok",
+      "page_url": "http://localhost:8080/parabank/transfer.htm"
+    },
+    {
+      "step": 2,
+      "reasoning": "enter amount",
+      "action": {
+        "kind": "fill",
+        "selector": "[data-aqa-ref=\"e0\"]",
+        "value": "100",
+        "url": null
+      },
+      "result": "filled amount with '100'",
+      "status": "ok",
+      "page_url": "http://localhost:8080/parabank/transfer.htm"
+    },
+    {
+      "step": 3,
+      "reasoning": "submit transfer",
+      "action": {
+        "kind": "click",
+        "selector": "[data-aqa-ref=\"e2\"]",
+        "value": null,
+        "url": null
+      },
+      "result": "clicked submit",
+      "status": "ok",
+      "page_url": "http://localhost:8080/parabank/transfer.htm"
+    },
+    {
+      "step": 4,
+      "reasoning": "goal achieved",
+      "action": {
+        "kind": "finish",
+        "selector": null,
+        "value": "Transfer of $100 completed; confirmation page shows 'Transfer Complete!'",
+        "url": null
+      },
+      "result": "agent declared finish",
+      "status": "ok",
+      "page_url": "http://localhost:8080/parabank/transfer.htm"
+    }
+  ],
+  "final_page_state": {
+    "url": "http://localhost:8080/parabank/transfer.htm",
+    "title": "ParaBank | Transfer Funds",
+    "headings": [
+      "Transfer Complete!"
+    ],
+    "text": "Transfer Complete! $100.00 has been transferred from account 13566 to account 13577.",
+    "interactive": []
+  },
+  "console_errors": [],
+  "network_failures": [],
+  "screenshots": [],
+  "finished_reason": "agent_finished",
+  "finish_summary": "Transfer of $100 completed; confirmation page shows 'Transfer Complete!'"
+}
