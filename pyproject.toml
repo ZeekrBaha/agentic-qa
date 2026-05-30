@@ -23,7 +23,7 @@ rag = [
 ]
 
 [project.scripts]
-agentic-qa = "agentic_qa.cli:app"
+agentic-qa = "agentic_qa.cli:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -31,6 +31,7 @@ build-backend = "hatchling.build"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+addopts = "-m 'not slow'"
 markers = [
     "slow: end-to-end tests that need a live Parabank + OPENAI_API_KEY",
 ]
