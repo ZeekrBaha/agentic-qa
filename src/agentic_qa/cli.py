@@ -15,7 +15,7 @@ from pathlib import Path
 import typer
 from playwright.async_api import async_playwright
 
-from . import config, flows, report, tools
+from . import config, flows, history, report, tools
 from .auth import ensure_logged_in
 from .explorer import new_run_dir
 from .graph import run_qa
@@ -58,6 +58,14 @@ async def _run(flow_specs: list[FlowSpec], headed: bool, base_url: str) -> Path:
         timestamp=run_dir.name,
     )
 
+    conn = history.connect(history.default_db_path())
+    history.record_run(
+        conn, ts=run_dir.name, base_url=base_url,
+        explorer_model=config.EXPLORER_MODEL, judge_model=config.JUDGE_MODEL,
+        bundles=state["bundles"], verdicts=state["verdicts"], usage=llm.usage,
+    )
+    conn.close()
+
     typer.echo("")
     for b, v in zip(state["bundles"], state["verdicts"]):
         typer.echo(f"  {b.flow:18s} {v.status:9s} {v.category}/{v.severity} "
@@ -83,6 +91,30 @@ def run(
     except ValueError as e:
         raise typer.BadParameter(str(e)) from e
     asyncio.run(_run(flow_specs, headed, base_url))
+
+
+@app.command("history")
+def show_history() -> None:
+    """Show aggregate stats across recorded runs."""
+    db = history.default_db_path()
+    if not db.exists():
+        typer.echo("No run history yet. Run `agentic-qa run` first.")
+        return
+    conn = history.connect(db)
+    typer.echo("Pass-rate by flow:")
+    for row in history.pass_rate_by_flow(conn):
+        typer.echo(f"  {row['flow']:18s} {row['pass_rate_pct']:5.1f}%  "
+                   f"({row['passes']}/{row['runs']} runs)")
+    sev = history.severity_counts(conn)
+    if sev:
+        typer.echo(f"\nFailures by severity: {sev}")
+    fails = history.recent_failures(conn, limit=5)
+    if fails:
+        typer.echo("\nRecent failures:")
+        for f in fails:
+            typer.echo(f"  [{f['ts']}] {f['flow']} ({f['severity']}/{f['category']}): "
+                       f"{f['reasoning'][:80]}")
+    conn.close()
 
 
 def main() -> None:
