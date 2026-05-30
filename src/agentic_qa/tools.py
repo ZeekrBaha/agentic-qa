@@ -118,6 +118,20 @@ async def fill(page: Page, selector: str, value: str) -> str:
         raise ToolError("fill", f"selector {selector!r}: {e}") from e
 
 
+async def select_option(page: Page, selector: str, option: str) -> str:
+    """Choose an option in a <select> dropdown, by value or visible label."""
+    locator = page.locator(selector).first
+    try:
+        await locator.select_option(value=option, timeout=config.RUN.action_timeout_ms)
+        return f"selected {option!r} in {selector}"
+    except PlaywrightError:
+        try:
+            await locator.select_option(label=option, timeout=config.RUN.action_timeout_ms)
+            return f"selected {option!r} in {selector}"
+        except PlaywrightError as e:
+            raise ToolError("select", f"selector {selector!r} option {option!r}: {e}") from e
+
+
 async def screenshot(page: Page, path: str | None = None) -> str:
     """Save a full-page screenshot. Returns the path written."""
     if path is None:

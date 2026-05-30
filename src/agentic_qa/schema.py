@@ -13,7 +13,7 @@ from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field
 
-ActionKind = Literal["navigate", "click", "fill", "finish"]
+ActionKind = Literal["navigate", "click", "fill", "select", "finish"]
 
 
 class FlowSpec(BaseModel):
@@ -32,7 +32,9 @@ class Action(BaseModel):
         default=None, description="CSS selector for click/fill (use a provided ref)."
     )
     value: Optional[str] = Field(
-        default=None, description="Text to type for 'fill'; final summary for 'finish'."
+        default=None,
+        description="Text to type for 'fill'; option label/value for 'select'; "
+        "final summary for 'finish'.",
     )
     url: Optional[str] = Field(
         default=None, description="Destination for 'navigate'."

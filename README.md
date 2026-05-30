@@ -93,6 +93,20 @@ The unit suite validates the tool layer, the self-healing explorer loop, the
 judge (against recorded good/broken fixtures), the report renderers, and the
 LangGraph wiring — all deterministically with a scripted fake LLM.
 
+### Planted-bug demo (the showcase)
+
+A tiny, fully-controlled Flask bank with one deliberate bug: a transfer credits
+the destination but never debits the source, so the confirmation page shows the
+source's "new balance" equal to its "previous balance." The agent walks the
+transfer flow and the RAG-grounded judge catches it (`fail` / `data_error`),
+citing the documented rule that a transfer must reduce the source balance.
+
+```bash
+uv pip install -e ".[demo]"
+export OPENAI_API_KEY=sk-...
+python -m agentic_qa.run_demo
+```
+
 ## Project layout
 
 ```

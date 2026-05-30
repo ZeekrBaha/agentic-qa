@@ -47,6 +47,27 @@ async def test_fill_then_click_via_returned_selectors(page):
     assert await page.title() == "clicked!"
 
 
+async def test_select_option_by_label_and_value(page):
+    await page.set_content(
+        "<select id='acct'><option value='1001'>Checking</option>"
+        "<option value='1002'>Savings</option></select>"
+    )
+    state = await tools.get_page_state(page)
+    sel = state["interactive"][0]["selector"]
+    await tools.select_option(page, sel, "Savings")  # by label
+    assert await page.locator(sel).input_value() == "1002"
+    await tools.select_option(page, sel, "1001")  # by value
+    assert await page.locator(sel).input_value() == "1001"
+
+
+async def test_select_option_missing_raises_toolerror(page, monkeypatch):
+    monkeypatch.setattr(config.RUN, "action_timeout_ms", 800)
+    await page.set_content("<select id='acct'><option value='x'>X</option></select>")
+    with pytest.raises(ToolError) as exc:
+        await tools.select_option(page, "#acct", "nope")
+    assert exc.value.action == "select"
+
+
 async def test_navigate_returns_final_url(page):
     final = await tools.navigate(page, "data:text/html,<h1>Hello</h1>")
     assert final.startswith("data:text/html")

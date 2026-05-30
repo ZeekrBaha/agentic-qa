@@ -48,6 +48,8 @@ Rules:
 - To click or fill, use the EXACT `selector` string from the interactive
   elements list. Never invent selectors.
 - Fill required fields before clicking submit/continue buttons.
+- For a dropdown (role combobox / a <select>), use kind "select" with its
+  selector and put the option's visible label or value in "value".
 - If an action failed last turn (status tool_error), do not repeat it blindly:
   re-read the current page and try a different element or approach.
 - Call action.kind = "finish" when the goal is achieved OR you are confident it
@@ -107,6 +109,10 @@ async def _execute(page: Page, action: Action) -> str:
         if not action.selector:
             raise ToolError("fill", "no selector provided")
         return await tools.fill(page, action.selector, action.value or "")
+    if action.kind == "select":
+        if not action.selector:
+            raise ToolError("select", "no selector provided")
+        return await tools.select_option(page, action.selector, action.value or "")
     raise ToolError(action.kind, "unsupported action")
 
 

@@ -21,6 +21,9 @@ rag = [
     "psycopg[binary]>=3.2",
     "pgvector>=0.3",
 ]
+demo = [
+    "flask>=3.0",
+]
 
 [project.scripts]
 agentic-qa = "agentic_qa.cli:main"
