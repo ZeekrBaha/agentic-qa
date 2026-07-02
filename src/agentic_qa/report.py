@@ -138,7 +138,7 @@ def render_html(
             f"<p><b>Judge reasoning:</b> {_esc(v.reasoning)}</p>"
             + (f"<p><b>Explorer summary:</b> {_esc(b.finish_summary)}</p>"
                if b.finish_summary else "")
-            + (f"<p><b>Errors:</b> {_esc(b.console_errors)}</p>"
+            + (f"<p><b>Errors:</b> {_esc('; '.join(b.console_errors))}</p>"
                if b.console_errors else "")
             + "".join(
                 f"<img src='{_esc(Path(s).name)}' style='max-width:100%;border:1px solid #ddd'>"

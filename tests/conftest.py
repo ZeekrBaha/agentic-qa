@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import Type, TypeVar
 
+import pytest
 import pytest_asyncio
 from playwright.async_api import async_playwright
 from pydantic import BaseModel
@@ -41,7 +42,14 @@ class FakeLLM:
 @pytest_asyncio.fixture
 async def page():
     async with async_playwright() as pw:
-        browser = await pw.chromium.launch(headless=True)
+        try:
+            browser = await pw.chromium.launch(headless=True)
+        except Exception as e:
+            if "Executable doesn't exist" in str(e):
+                pytest.skip(
+                    "Chromium not installed — run `playwright install chromium`"
+                )
+            raise
         pg = await browser.new_page()
         try:
             yield pg

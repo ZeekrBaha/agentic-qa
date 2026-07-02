@@ -13,7 +13,6 @@ import re
 import pytest
 
 from agentic_qa import rag
-from agentic_qa.expected_behavior import EXPECTED_BEHAVIOR
 from agentic_qa.flows import select as select_flows
 
 VOCAB = ["transfer", "bill", "payment", "payee", "open", "savings", "account",

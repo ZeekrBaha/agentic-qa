@@ -10,10 +10,9 @@ consecutive actions fail.
 
 from __future__ import annotations
 
-import json
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Protocol, Type, TypeVar
+from typing import Any, Literal, Protocol, Type, TypeVar
 
 from playwright.async_api import Page
 from pydantic import BaseModel
@@ -91,7 +90,7 @@ def _history_for_prompt(steps: list[StepRecord], last_n: int = 6) -> str:
     out = []
     for s in recent:
         a = s.action
-        desc = a.kind
+        desc: str = a.kind
         if a.selector:
             desc += f" {a.selector}"
         if a.value and a.kind in ("fill", "select"):
@@ -196,6 +195,7 @@ async def explore(
             )
             break
 
+        status: Literal["ok", "tool_error"]
         try:
             result = await _execute(page, action)
             status = "ok"

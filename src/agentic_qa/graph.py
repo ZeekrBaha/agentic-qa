@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import operator
 from pathlib import Path
-from typing import Annotated, Any, Awaitable, Callable, TypedDict
+from typing import Annotated, Any, Callable, TypedDict
 
 from langgraph.graph import END, START, StateGraph
 from playwright.async_api import Page

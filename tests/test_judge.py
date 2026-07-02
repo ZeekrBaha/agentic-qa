@@ -9,8 +9,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from agentic_qa.judge import Verdict, build_messages, judge
 from agentic_qa.schema import ObservationBundle
 from tests.conftest import FakeLLM

@@ -14,7 +14,7 @@ import threading
 import pytest
 from werkzeug.serving import make_server
 
-from agentic_qa import config, tools
+from agentic_qa import tools
 from agentic_qa.config import RunSettings
 from agentic_qa.demo_app.app import app
 from agentic_qa.explorer import explore

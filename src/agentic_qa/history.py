@@ -68,7 +68,8 @@ def record_run(
         (ts, base_url, explorer_model, judge_model,
          (usage or {}).get("total_tokens", 0)),
     )
-    run_id = int(cur.lastrowid)
+    assert cur.lastrowid is not None
+    run_id = cur.lastrowid
     for b, v in zip(bundles, verdicts):
         conn.execute(
             "INSERT INTO flow_results (run_id, flow, status, category, severity, "

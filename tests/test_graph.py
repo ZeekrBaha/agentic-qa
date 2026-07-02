@@ -7,8 +7,6 @@ without Parabank or an API key.
 
 from __future__ import annotations
 
-import pytest
-
 from agentic_qa import tools
 from agentic_qa.graph import run_qa
 from agentic_qa.judge import Verdict

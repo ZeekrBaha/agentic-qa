@@ -10,9 +10,10 @@ Token usage accumulates on the instance so the report can show what a run cost.
 
 from __future__ import annotations
 
-from typing import Type, TypeVar
+from typing import Type, TypeVar, cast
 
 from openai import AsyncOpenAI
+from openai.types.chat import ChatCompletionMessageParam
 from pydantic import BaseModel
 
 from . import config
@@ -43,7 +44,7 @@ class LLMClient:
         """Return an instance of ``schema`` parsed from the model's response."""
         resp = await self._client.beta.chat.completions.parse(
             model=model,
-            messages=messages,
+            messages=cast(list[ChatCompletionMessageParam], messages),
             response_format=schema,
         )
         usage = resp.usage

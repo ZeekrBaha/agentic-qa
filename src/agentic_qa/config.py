@@ -8,7 +8,7 @@ The OpenAI key is only read lazily, when an LLM call is actually made
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 # --- Target app -----------------------------------------------------------
