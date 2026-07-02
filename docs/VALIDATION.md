@@ -1,6 +1,6 @@
 # Validation Findings
 
-This system was validated both offline (30 unit tests, scripted fake LLM) and
+This system was validated both offline (31 unit tests, scripted fake LLM) and
 live (real OpenAI models against a local Parabank container and the planted-bug
 demo app). Live validation surfaced several real defects, all root-caused and
 fixed; this document records what was found and the resulting conclusions.

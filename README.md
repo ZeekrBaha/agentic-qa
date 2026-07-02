@@ -198,7 +198,7 @@ pytest                 # fast unit tests (no key, no server) — 'slow' tests sk
 pytest -m slow         # end-to-end against live Parabank + OPENAI_API_KEY
 ```
 
-The unit suite (30 tests) validates the tool layer, the self-healing explorer
+The unit suite (31 tests) validates the tool layer, the self-healing explorer
 loop, the judge (against recorded good/broken fixtures), the report renderers,
 the SQLite history, the RAG retrieval, and the LangGraph wiring — all
 deterministically with a scripted fake LLM.
@@ -207,7 +207,7 @@ deterministically with a scripted fake LLM.
 
 ## Validation
 
-Validated offline (30 unit tests) and live (real models vs Parabank + the
+Validated offline (31 unit tests) and live (real models vs Parabank + the
 planted-bug app). The judge discriminates correctly:
 
 | Scenario | Verdict | Correct? |
